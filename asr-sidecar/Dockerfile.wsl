@@ -1,0 +1,76 @@
+# EXPERIMENTAL: AMD GPU sidecar for Docker Desktop on WINDOWS (WSL2 backend),
+# targeting Ryzen AI Max "Strix Halo" (gfx1151 / Radeon 8060S).
+#
+# GPU access goes through WSL2's paravirtualized /dev/dxg device instead of the
+# native Linux /dev/kfd path, which needs three pieces baked in here:
+#   1. AMD's WSL-specific HSA runtime (hsa-runtime-rocr4wsl-amdgpu)
+#   2. librocdxg (ROCm <-> Windows DXG bridge), built against Windows SDK
+#      headers passed in as the "winsdk" build context
+#   3. ROCm 7.2 torch wheel with its bundled libhsa-runtime64 removed, so the
+#      WSL runtime above is used at load time
+#
+# Host requirements: Adrenalin 26.3.1+ driver, recent WSL2 kernel, Windows SDK
+# headers (for the build), and docker-compose.wsl.yml for the runtime mounts.
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 python3-pip python3-venv \
+        ca-certificates wget gnupg git cmake g++ make \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- ROCm 7.2 core + WSL HSA runtime via AMD's installer --------------------
+# amdgpu-install configures the three required repos (rocm, amdgpu, graphics —
+# the last one hosts hsa-runtime-rocr4wsl-amdgpu) and installs the WSL usecase.
+RUN wget -q https://repo.radeon.com/amdgpu-install/7.2/ubuntu/noble/amdgpu-install_7.2.70200-1_all.deb -O /tmp/amdgpu-install.deb \
+    && apt-get update \
+    && apt-get install -y /tmp/amdgpu-install.deb \
+    && amdgpu-install --usecase=wsl --no-dkms -y \
+    # runtime libraries the AMD torch wheel links against (found via ldd)
+    && apt-get install -y --no-install-recommends \
+         rocm-hip-runtime rocblas hipblas hipblaslt hipfft hiprand hipsolver \
+         hipsparse hipsparselt miopen-hip rccl roctracer libnuma1 \
+    && rm -rf /var/lib/apt/lists/* /tmp/amdgpu-install.deb
+
+# --- librocdxg: ROCm <-> WSL DXG bridge --------------------------------------
+# Windows SDK "shared" headers come from the winsdk build context (see
+# docker-compose.wsl.yml additional_contexts).
+COPY --from=winsdk shared /winsdk/shared
+RUN git clone --depth 1 -b develop https://github.com/ROCm/librocdxg.git /tmp/librocdxg \
+    && cmake -S /tmp/librocdxg -B /tmp/librocdxg/build \
+         -DWIN_SDK=/winsdk/shared -DCMAKE_INSTALL_PREFIX=/opt/rocm \
+    && make -C /tmp/librocdxg/build -j"$(nproc)" \
+    && make -C /tmp/librocdxg/build install \
+    && sh -c 'cd /opt/rocm/lib && ln -sf librocdxg.so.* librocdxg.so.1 || true' \
+    && echo /opt/rocm/lib > /etc/ld.so.conf.d/rocm.conf && ldconfig \
+    && rm -rf /tmp/librocdxg /winsdk
+
+WORKDIR /app
+
+# --- Python env: AMD ROCm 7.2 torch wheel (gfx1151-capable) ------------------
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+RUN pip install --no-cache-dir --no-deps \
+        https://repo.radeon.com/rocm/manylinux/rocm-rel-7.2/torch-2.10.0%2Brocm7.2.0.lw.gitb6ee5fde-cp312-cp312-linux_x86_64.whl \
+    && pip install --no-cache-dir filelock typing-extensions sympy networkx jinja2 fsspec \
+    # drop torch's bundled HSA runtime so the WSL (rocr4wsl) one is used
+    && rm -f $VIRTUAL_ENV/lib/python3.12/site-packages/torch/lib/libhsa-runtime64.so*
+
+COPY requirements-rocm.txt .
+RUN pip install --no-cache-dir -r requirements-rocm.txt
+
+COPY download_model.py engine.py server.py ./
+
+ENV HF_HOME=/data/hf \
+    PYTHONUNBUFFERED=1 \
+    VOXTRAL_DEVICE=cuda \
+    HSA_ENABLE_DXG_DETECTION=1 \
+    LD_LIBRARY_PATH=/usr/lib/wsl/lib:/opt/rocm/lib \
+    TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL=1
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "python download_model.py && exec uvicorn server:app --host 0.0.0.0 --port 8000"]

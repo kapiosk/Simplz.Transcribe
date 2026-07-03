@@ -1,0 +1,31 @@
+# EXPERIMENTAL override: AMD GPU (Strix Halo / gfx1151) under Docker Desktop
+# on WINDOWS via the WSL2 /dev/dxg paravirtualized GPU path.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.wsl.yml up --build
+#
+# Host requirements:
+#   - AMD Adrenalin 26.3.1 or newer
+#   - Windows SDK headers for the image build (WINSDK_INCLUDE below)
+#   - Docker Desktop with the WSL2 backend
+services:
+  asr:
+    build:
+      context: ./asr-sidecar
+      dockerfile: Dockerfile.wsl
+      additional_contexts:
+        winsdk: "${WINSDK_INCLUDE:-C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0}"
+    environment:
+      - HF_HOME=/data/hf
+      - VOXTRAL_DEVICE=cuda    # ROCm/HIP presents itself as torch "cuda"
+      - VOXTRAL_DTYPE=float16  # bf16 has known precision issues on gfx1151
+    devices:
+      - /dev/dxg
+    volumes:
+      - hf-cache:/data/hf
+      - /usr/lib/wsl/lib:/usr/lib/wsl/lib:ro
+    ipc: host
+    shm_size: 8g
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined

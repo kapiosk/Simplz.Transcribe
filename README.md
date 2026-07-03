@@ -63,7 +63,27 @@ at it and remove the sidecar — no code changes:
       - Asr__WebSocketUrl=ws://your-gpu-host:8000/v1/realtime
 ```
 
-### Experimental: AMD GPU (Ryzen AI Max "Strix Halo", gfx1151) — Linux hosts only
+### Experimental: AMD GPU on Windows (Docker Desktop + WSL2, Strix Halo)
+
+Verified working on a Ryzen AI Max+ 395 (Radeon 8060S) with Docker Desktop on Windows 11:
+the sidecar reaches the iGPU through WSL2's paravirtualized `/dev/dxg` device using AMD's
+WSL HSA runtime and the [librocdxg](https://github.com/ROCm/librocdxg) DXG bridge (built
+during the image build against your Windows SDK headers).
+
+Host requirements: AMD Adrenalin **26.3.1 or newer**, Windows SDK headers (default path
+`C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0`, override with the
+`WINSDK_INCLUDE` env var), Docker Desktop with the WSL2 backend.
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.wsl.yml up --build
+```
+
+Measured on the 8060S: ~1.5× slower than real time (vs ~3× on the same machine's CPU) —
+torch's ROCm decode path on gfx1151 is currently memcpy-bound
+([pytorch#171687](https://github.com/pytorch/pytorch/issues/171687)), so expect this to
+improve with newer wheels. The first request after startup is slower (kernel warmup).
+
+### Experimental: AMD GPU (Ryzen AI Max "Strix Halo", gfx1151) — Linux hosts
 
 The repo includes an all-Docker ROCm variant of the sidecar built against AMD's
 [TheRock nightly PyTorch wheels](https://github.com/ROCm/TheRock/blob/main/RELEASES.md) for
