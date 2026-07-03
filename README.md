@@ -91,3 +91,8 @@ docker compose build                        # build both images
 The web app can run outside Docker (`dotnet run --project src/Simplz.Transcribe.Web`) if you
 have ffmpeg on PATH and set `Asr__WebSocketUrl=ws://localhost:8000/v1/realtime` with the
 sidecar's port 8000 published.
+
+## License
+
+[MIT](LICENSE). The Voxtral Realtime model weights are separately licensed under Apache 2.0
+by Mistral AI.
