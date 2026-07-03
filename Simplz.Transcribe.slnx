@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Simplz.Transcribe.Web/Simplz.Transcribe.Web.csproj" />
+  </Folder>
+</Solution>

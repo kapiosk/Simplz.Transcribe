@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simplz Transcribe</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 860px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+    }
+    h1 { font-size: 1.5rem; }
+    section {
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    button {
+      font-size: 1rem;
+      padding: .5rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+      cursor: pointer;
+      background: transparent;
+      color: inherit;
+    }
+    button:disabled { opacity: .45; cursor: default; }
+    button.recording { background: #c0392b; color: #fff; border-color: #c0392b; }
+    .transcript {
+      min-height: 4rem;
+      margin-top: .75rem;
+      padding: .75rem;
+      border-radius: 8px;
+      background: color-mix(in srgb, currentColor 7%, transparent);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .status { font-size: .85rem; opacity: .7; margin-top: .5rem; min-height: 1.2em; }
+    .error { color: #c0392b; }
+    input[type=file] { font-size: .95rem; }
+  </style>
+</head>
+<body>
+  <h1>🎙️ Simplz Transcribe</h1>
+  <p>Local streaming transcription — Voxtral Realtime 4B running in this stack, no cloud.</p>
+
+  <section>
+    <h2>Microphone</h2>
+    <button id="micBtn">Start recording</button>
+    <div id="micStatus" class="status"></div>
+    <div id="micTranscript" class="transcript"></div>
+  </section>
+
+  <section>
+    <h2>Audio / video file</h2>
+    <input type="file" id="fileInput" accept="audio/*,video/*">
+    <div id="fileStatus" class="status"></div>
+    <div id="fileTranscript" class="transcript"></div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

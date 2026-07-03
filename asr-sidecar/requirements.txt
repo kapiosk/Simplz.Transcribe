@@ -1,0 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.9,<3
+transformers>=5.2,<6
+mistral-common[audio]>=1.9
+huggingface_hub>=0.30
+numpy>=1.26
+fastapi>=0.115
+uvicorn[standard]>=0.34

@@ -1,0 +1,31 @@
+services:
+  web:
+    build: ./src/Simplz.Transcribe.Web
+    ports:
+      - "8080:8080"
+    environment:
+      - Asr__WebSocketUrl=ws://asr:8000/v1/realtime
+      - Asr__Model=mistralai/Voxtral-Mini-4B-Realtime-2602
+    depends_on:
+      asr:
+        condition: service_healthy
+    restart: unless-stopped
+
+  asr:
+    build: ./asr-sidecar
+    environment:
+      - HF_HOME=/data/hf
+      - VOXTRAL_MODEL=mistralai/Voxtral-Mini-4B-Realtime-2602
+      - VOXTRAL_DTYPE=bfloat16   # float32 is more compatible but needs ~2x RAM
+    volumes:
+      - hf-cache:/data/hf
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 45m   # first start downloads ~9 GB of weights + loads the model
+    restart: unless-stopped
+
+volumes:
+  hf-cache:
