@@ -23,6 +23,7 @@ logger = logging.getLogger("asr.engine")
 
 MODEL_ID = os.environ.get("VOXTRAL_MODEL", "mistralai/Voxtral-Mini-4B-Realtime-2602")
 DTYPE_NAME = os.environ.get("VOXTRAL_DTYPE", "bfloat16")  # bfloat16 | float32
+DEVICE = os.environ.get("VOXTRAL_DEVICE", "cpu")  # "cuda" also selects ROCm/HIP GPUs
 
 SAMPLE_RATE = 16_000
 
@@ -43,10 +44,13 @@ class VoxtralEngine:
         )
 
         dtype = torch.bfloat16 if DTYPE_NAME == "bfloat16" else torch.float32
-        logger.info("loading %s (dtype=%s) — this can take a while on first run", MODEL_ID, dtype)
+        logger.info("loading %s (dtype=%s, device=%s) — this can take a while on first run",
+                    MODEL_ID, dtype, DEVICE)
         self.processor = VoxtralRealtimeProcessor.from_pretrained(MODEL_ID)
-        # No device_map: plain CPU load (device_map would require `accelerate`).
+        # No device_map: plain load (device_map would require `accelerate`).
         self.model = VoxtralRealtimeForConditionalGeneration.from_pretrained(MODEL_ID, dtype=dtype)
+        if DEVICE != "cpu":
+            self.model.to(DEVICE)
         self.model.eval()
         self._busy = threading.Lock()
         logger.info("model loaded")

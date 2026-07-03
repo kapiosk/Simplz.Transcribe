@@ -63,6 +63,23 @@ at it and remove the sidecar — no code changes:
       - Asr__WebSocketUrl=ws://your-gpu-host:8000/v1/realtime
 ```
 
+### Experimental: AMD GPU (Ryzen AI Max "Strix Halo", gfx1151) — Linux hosts only
+
+The repo includes an all-Docker ROCm variant of the sidecar built against AMD's
+[TheRock nightly PyTorch wheels](https://github.com/ROCm/TheRock/blob/main/RELEASES.md) for
+gfx1151. The container gets the iGPU via `/dev/kfd` + `/dev/dri`, which requires **Docker on
+a Linux host** with the `amdgpu` kernel driver — Docker Desktop on Windows/macOS cannot pass
+through the AMD iGPU.
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.rocm.yml up --build
+```
+
+Untested/experimental: gfx1151 is still "preview" in ROCm. If the container can't see the
+GPU, replace the `video`/`render` group names in `docker-compose.rocm.yml` with your host's
+numeric GIDs (`getent group video render`). Rough math says the 4B model at bf16 should reach
+real-time on the 8060S iGPU (memory-bandwidth-bound at roughly 2× the ~12.5 tok/s needed).
+
 ## Configuration
 
 | Variable | Service | Default | Notes |
@@ -70,6 +87,7 @@ at it and remove the sidecar — no code changes:
 | `Asr__WebSocketUrl` | web | `ws://asr:8000/v1/realtime` | Any vLLM-Realtime-compatible endpoint |
 | `Asr__Model` | web | `mistralai/Voxtral-Mini-4B-Realtime-2602` | Sent in `session.update` |
 | `VOXTRAL_DTYPE` | asr | `bfloat16` | `float32` = more compatible, ~2× RAM |
+| `VOXTRAL_DEVICE` | asr | `cpu` | `cuda` selects the GPU (incl. ROCm/HIP builds) |
 | `VOXTRAL_MODEL` | asr | `mistralai/Voxtral-Mini-4B-Realtime-2602` | |
 
 The streaming delay (480 ms) is fixed by the model's processor config.

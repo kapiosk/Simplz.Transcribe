@@ -1,0 +1,8 @@
+# Same as requirements.txt but WITHOUT torch — the ROCm torch wheel for
+# gfx1151 (Strix Halo) is installed separately in Dockerfile.rocm.
+transformers>=5.2,<6
+mistral-common[audio]>=1.9
+huggingface_hub>=0.30
+numpy>=1.26
+fastapi>=0.115
+uvicorn[standard]>=0.34

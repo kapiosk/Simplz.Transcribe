@@ -1,0 +1,22 @@
+# EXPERIMENTAL override: run the ASR sidecar on an AMD iGPU/GPU (ROCm,
+# built for gfx1151 = Ryzen AI Max "Strix Halo"). Linux Docker hosts only.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.rocm.yml up --build
+#
+# If the container cannot see the GPU, replace the group names below with the
+# numeric GIDs of your host's `video` and `render` groups (getent group video render).
+services:
+  asr:
+    build:
+      context: ./asr-sidecar
+      dockerfile: Dockerfile.rocm
+    environment:
+      - HF_HOME=/data/hf
+      - VOXTRAL_DEVICE=cuda   # ROCm presents itself as the torch "cuda" device
+      - VOXTRAL_DTYPE=bfloat16
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render

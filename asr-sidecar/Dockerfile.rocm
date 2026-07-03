@@ -1,0 +1,29 @@
+# EXPERIMENTAL: ROCm/gfx1151 (AMD Strix Halo / Ryzen AI Max) GPU sidecar.
+# Requires a LINUX Docker host with the amdgpu kernel driver — the container
+# gets the GPU via /dev/kfd + /dev/dri (see docker-compose.rocm.yml).
+# Docker Desktop on Windows/macOS cannot pass through the AMD iGPU.
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libnuma1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Self-contained ROCm torch build for gfx1151 from AMD's TheRock nightlies.
+COPY requirements-rocm.txt .
+RUN pip install --no-cache-dir \
+        --index-url https://rocm.nightlies.amd.com/v2/gfx1151/ \
+        --extra-index-url https://pypi.org/simple \
+        torch \
+    && pip install --no-cache-dir -r requirements-rocm.txt
+
+COPY download_model.py engine.py server.py ./
+
+ENV HF_HOME=/data/hf \
+    PYTHONUNBUFFERED=1 \
+    VOXTRAL_DEVICE=cuda
+
+EXPOSE 8000
+
+CMD ["sh", "-c", "python download_model.py && exec uvicorn server:app --host 0.0.0.0 --port 8000"]
