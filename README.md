@@ -26,7 +26,7 @@ docker compose up --build
 
 The first start downloads ~9 GB of model weights into the `hf-cache` volume and then loads
 the model — watch progress with `docker compose logs -f asr`. The `web` service starts once
-`asr` reports healthy. Then open **http://localhost:8080**.
+`asr` reports healthy. Then open **http://localhost:8085**.
 
 - **Microphone**: click *Start recording*, speak, click *Stop*. Partial transcript streams in
   as it's decoded; the final transcript replaces it at the end.
@@ -36,7 +36,7 @@ the model — watch progress with `docker compose logs -f asr`. The `web` servic
 ### Test without a browser/microphone
 
 ```sh
-curl -N --data-binary @sample.mp3 http://localhost:8080/api/transcribe-file
+curl -N --data-binary @sample.mp3 http://localhost:8085/api/transcribe-file
 ```
 
 You'll see `data: {"type":"partial","text":"..."}` SSE events streaming, ending in a `final` event.

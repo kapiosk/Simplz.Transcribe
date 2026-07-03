@@ -45,9 +45,8 @@ class VoxtralEngine:
         dtype = torch.bfloat16 if DTYPE_NAME == "bfloat16" else torch.float32
         logger.info("loading %s (dtype=%s) — this can take a while on first run", MODEL_ID, dtype)
         self.processor = VoxtralRealtimeProcessor.from_pretrained(MODEL_ID)
-        self.model = VoxtralRealtimeForConditionalGeneration.from_pretrained(
-            MODEL_ID, device_map="cpu", dtype=dtype
-        )
+        # No device_map: plain CPU load (device_map would require `accelerate`).
+        self.model = VoxtralRealtimeForConditionalGeneration.from_pretrained(MODEL_ID, dtype=dtype)
         self.model.eval()
         self._busy = threading.Lock()
         logger.info("model loaded")

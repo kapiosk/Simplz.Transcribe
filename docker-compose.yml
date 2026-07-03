@@ -2,7 +2,7 @@ services:
   web:
     build: ./src/Simplz.Transcribe.Web
     ports:
-      - "8080:8080"
+      - "8085:8080"   # host:container — change the left side if 8085 is taken
     environment:
       - Asr__WebSocketUrl=ws://asr:8000/v1/realtime
       - Asr__Model=mistralai/Voxtral-Mini-4B-Realtime-2602
